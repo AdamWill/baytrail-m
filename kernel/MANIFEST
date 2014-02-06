@@ -1,5 +1,6 @@
 This directory contains kernel patches currently necessary/useful for
-Bay Trail-m devices which have not landed in linus' current tree.
+Bay Trail-m devices which have not landed in linus' current tree (or
+in Fedora's Rawhide kernel).
 
 * https://bugzilla.kernel.org/show_bug.cgi?id=67911
 simplify-efi-initialization.patch
