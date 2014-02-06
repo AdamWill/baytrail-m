@@ -2,6 +2,9 @@ This directory contains kernel patches currently necessary/useful for
 Bay Trail-m devices which have not landed in linus' current tree (or
 in Fedora's Rawhide kernel).
 
+These, of course, should be considered to be licensed under the GPLv2, not
+MIT.
+
 * https://bugzilla.kernel.org/show_bug.cgi?id=67911
 simplify-efi-initialization.patch
 allow-mapping-bgrt-on-x86-32.patch
