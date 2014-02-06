@@ -1,0 +1,16 @@
+This directory contains kernel patches currently necessary/useful for
+Bay Trail-m devices which have not landed in linus' current tree.
+
+* https://bugzilla.kernel.org/show_bug.cgi?id=67911
+simplify-efi-initialization.patch
+allow-mapping-bgrt-on-x86-32.patch
+
+* Reverts "drm/i915/vlv: re-enable hotplug detect based probing on VLV/BYT"
+* https://bugs.freedesktop.org/show_bug.cgi?id=71977
+vlv-hotplug-revert.patch
+
+* fix tsc calibration, otherwise kernel hangs in early init
+* see https://bugzilla.kernel.org/show_bug.cgi?id=69831
+* and https://lkml.org/lkml/2014/1/23/190
+tsc-fallback-normal.patch
+tsc-add-baytrail.patch

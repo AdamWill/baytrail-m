@@ -1,0 +1,24 @@
+Intel Baytrail is based on Silvermont core so MSR_FSB_FREQ[2:0] == 0 means
+that the CPU reference clock runs at 83.3MHz. Add this missing frequency to
+the table.
+
+Signed-off-by: Mika Westerberg <mika.westerberg@linux.intel.com>
+---
+ arch/x86/kernel/tsc_msr.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+diff --git a/arch/x86/kernel/tsc_msr.c b/arch/x86/kernel/tsc_msr.c
+index 8b5434f4389f..10a278661fe1 100644
+--- a/arch/x86/kernel/tsc_msr.c
++++ b/arch/x86/kernel/tsc_msr.c
+@@ -53,7 +53,7 @@ static struct freq_desc freq_desc_tables[] = {
+ 	/* TNG */
+ 	{ 6, 0x4a, 1, { 0, FREQ_100, FREQ_133, 0, 0, 0, 0, 0 } },
+ 	/* VLV2 */
+-	{ 6, 0x37, 1, { 0, FREQ_100, FREQ_133, FREQ_166, 0, 0, 0, 0 } },
++	{ 6, 0x37, 1, { FREQ_83, FREQ_100, FREQ_133, FREQ_166, 0, 0, 0, 0 } },
+ 	/* ANN */
+ 	{ 6, 0x5a, 1, { FREQ_83, FREQ_100, FREQ_133, FREQ_100, 0, 0, 0, 0 } },
+ };
+-- 
+1.8.5.2
+
