@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Based on an original by Maxwell Pray (synthead), from
+# https://bbs.archlinux.org/viewtopic.php?id=107167
+
 xinputs=( 9 10 )
 
 xrandrout="$(xrandr)"
