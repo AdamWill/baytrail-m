@@ -18,3 +18,8 @@ vlv-hotplug-revert.patch
 * and https://lkml.org/lkml/2014/1/23/190
 tsc-fallback-normal.patch
 tsc-add-baytrail.patch
+
+* Venue 8 Pro quirks for shutdown and reboot, from Jan Michael Brummer at Intel,
+* alan cox has been asked to review
+dv8p-reboot.patch
+dv8p-poweroff.patch
