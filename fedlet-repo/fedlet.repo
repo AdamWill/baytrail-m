@@ -1,0 +1,16 @@
+# Place this file in your /etc/yum.repos.d/ directory
+
+[fedlet]
+name=Fedlet
+baseurl=https://www.happyassassin.net/fedlet/repo/$basearch
+enabled=1
+skip_if_unavailable=0
+gpgcheck=1
+metadata_expire=24h
+
+[fedlet-source]
+name=Fedlet - Source
+baseurl=https://www.happyassassin.net/fedlet/repo/SRPMS
+enabled=0
+skip_if_unavailable=1
+gpgcheck=1
