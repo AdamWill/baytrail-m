@@ -6,6 +6,7 @@ baseurl=https://www.happyassassin.net/fedlet/repo/$basearch
 enabled=1
 skip_if_unavailable=0
 gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-fedlet
 metadata_expire=24h
 
 [fedlet-source]
