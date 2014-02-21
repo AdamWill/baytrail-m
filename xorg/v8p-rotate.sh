@@ -13,7 +13,10 @@ case $xrandrout in
 esac
 
 xrandr -o $(( rotate * 3 ))
-for input in ${xinputs[@]}; do
- xinput set-prop $input "Evdev Axes Swap" $rotate
- xinput set-prop $input "Evdev Axis Inversion" 0, $rotate
-done
+
+# Seems to be working automatically since kernel 3.14rc3 or so. This script
+# is really now just a convenience call to xrandr.
+#for input in ${xinputs[@]}; do
+# xinput set-prop $input "Evdev Axes Swap" $rotate
+# xinput set-prop $input "Evdev Axis Inversion" 0, $rotate
+#done
