@@ -1,0 +1,67 @@
+From 8d0c85755890992cc891e77a22326a96de37bdf0 Mon Sep 17 00:00:00 2001
+From: Adam Williamson <awilliam@redhat.com>
+Date: Thu, 20 Feb 2014 18:23:31 -0800
+Subject: [PATCH] reboot quirks on Baytrail tablets Dell Venue 8 Pro, Lenovo
+ Miix 2, Asus T100TA
+
+All the first generation Baytrail-based tablets tested so far require a PCI
+reboot quirk to reboot successfully.
+---
+ arch/x86/kernel/reboot.c | 27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
+
+diff --git a/arch/x86/kernel/reboot.c b/arch/x86/kernel/reboot.c
+index c752cb4..5bb20ce 100644
+--- a/arch/x86/kernel/reboot.c
++++ b/arch/x86/kernel/reboot.c
+@@ -190,6 +190,14 @@ static struct dmi_system_id __initdata reboot_dmi_table[] = {
+ 			DMI_MATCH(DMI_BOARD_NAME, "P4S800"),
+ 		},
+ 	},
++	{	/* Handle problems with rebooting on ASUS T100TA */
++		.callback = set_pci_reboot,
++		.ident = "ASUS T100TA",
++		.matches = {
++			DMI_MATCH(DMI_BOARD_VENDOR, "ASUSTeK COMPUTER INC."),
++			DMI_MATCH(DMI_BOARD_NAME, "T100TA"),
++		},
++	},
+ 
+ 	/* Dell */
+ 	{	/* Handle problems with rebooting on Dell DXP061 */
+@@ -365,6 +373,14 @@ static struct dmi_system_id __initdata reboot_dmi_table[] = {
+ 			DMI_MATCH(DMI_PRODUCT_NAME, "Dell XPS710"),
+ 		},
+ 	},
++	{	/* Handle problems with rebooting on Dell Venue 8 Pro */
++		.callback = set_pci_reboot,
++		.ident = "Dell Venue 8 Pro",
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "DellInc."),
++			DMI_MATCH(DMI_PRODUCT_NAME, "Venue 8 Pro 5830"),
++		},
++	},
+ 
+ 	/* Hewlett-Packard */
+ 	{	/* Handle problems with rebooting on HP laptops */
+@@ -376,6 +392,17 @@ static struct dmi_system_id __initdata reboot_dmi_table[] = {
+ 		},
+ 	},
+ 
++	/* Lenovo */
++	{	/* Handle problems with rebooting on Lenovo Miix 2 */
++		.callback = set_pci_reboot,
++		.ident = "Lenovo Miix 2",
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "LENOVO"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "20326"),
++		},
++	},
++
++
+ 	/* Sony */
+ 	{	/* Handle problems with rebooting on Sony VGN-Z540N */
+ 		.callback = set_bios_reboot,
+-- 
+1.9.0
+
