@@ -5,16 +5,14 @@ in Fedora's Rawhide kernel).
 These, of course, should be considered to be licensed under the GPLv2, not
 MIT.
 
-* https://bugzilla.kernel.org/show_bug.cgi?id=67911
-simplify-efi-initialization.patch
-
 * fix tsc calibration, otherwise kernel hangs in early init
 * see https://bugzilla.kernel.org/show_bug.cgi?id=69831
 * and https://lkml.org/lkml/2014/1/23/190
 tsc-fallback-normal.patch
 tsc-add-baytrail.patch
 
-* Venue 8 Pro quirks for shutdown and reboot, from Jan Michael Brummer at Intel,
-* alan cox has been asked to review
-dv8p-reboot.patch
+* Quirks for shutdown and reboot, from Jan Michael Brummer at Intel,
+* Jacek Danecki, and myself
+* https://bugzilla.kernel.org/show_bug.cgi?id=70931
+0001-reboot-quirks-on-Baytrail-tablets-Dell-Venue-8-Pro-L.patch
 dv8p-poweroff.patch
