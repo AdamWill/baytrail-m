@@ -16,3 +16,8 @@ tsc-add-baytrail.patch
 * https://bugzilla.kernel.org/show_bug.cgi?id=70931
 0001-reboot-quirks-on-Baytrail-tablets-Dell-Venue-8-Pro-L.patch
 dv8p-poweroff.patch
+
+* Work around a bug that causes very bad performance on default 'powersave'
+* governor until it's fixed upstream
+* https://bugzilla.kernel.org/show_bug.cgi?id=70941
+0002-drop-baytrail-setpoint-to-90-temporary-hack-for-BKO-.patch
