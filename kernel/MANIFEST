@@ -5,19 +5,48 @@ in Fedora's Rawhide kernel).
 These, of course, should be considered to be licensed under the GPLv2, not
 MIT.
 
-* fix tsc calibration, otherwise kernel hangs in early init
-* see https://bugzilla.kernel.org/show_bug.cgi?id=69831
-* and https://lkml.org/lkml/2014/1/23/190
-tsc-fallback-normal.patch
-tsc-add-baytrail.patch
-
 * Quirks for shutdown and reboot, from Jan Michael Brummer at Intel,
 * Jacek Danecki, and myself
 * https://bugzilla.kernel.org/show_bug.cgi?id=70931
 0001-reboot-quirks-on-Baytrail-tablets-Dell-Venue-8-Pro-L.patch
 dv8p-poweroff.patch
 
-* Work around a bug that causes very bad performance on default 'powersave'
-* governor until it's fixed upstream
+* Test fix for a bug that causes very bad performance on default 'powersave'
+* governor
 * https://bugzilla.kernel.org/show_bug.cgi?id=70941
-0002-drop-baytrail-setpoint-to-90-temporary-hack-for-BKO-.patch
+bko_70941.patch
+
+* LPSS support, probably needed for sound to work
+* https://lkml.org/lkml/2014/2/18/127
+baytrail_acpi_pwm.patch
+* https://lkml.org/lkml/2014/1/20/88
+lpss_pwm.patch
+* https://github.com/rjwysocki/linux-pm/commit/b2a51a6d0f96308251cfa41b793c43d0316e3b16
+baytrail_gpio_lpss_ids.patch
+
+* Sound patches not in Liam Girdwood's tree, from alsa-devel; applied after
+* the lrg series (see below)
+* http://article.gmane.org/gmane.linux.alsa.devel/119572
+ASoC-Intel-byt-r5640-init-time-dai-format.patch
+* http://article.gmane.org/gmane.linux.alsa.devel/119571
+ASoC-Intel-byt-r5640-update-internal-mic.patch
+* http://article.gmane.org/gmane.linux.alsa.devel/119577
+ASoC-Intel-missing-firmware.patch
+
+The fedlet kernel build also includes a large patch series to enable sound. It
+is not carried in this git repo because it'd be tedious to do so. You can
+generate the patch series by doing:
+
+git clone git://git.kernel.org/pub/scm/linux/kernel/git/lrg/asoc.git
+cd asoc
+git checkout intel/haswell-audio-dsp
+git format-patch 38dbfb59d1175ef458d006556061adeaa8751b72 (currently - just
+generate a patch series going back to whatever upstream commit he's currently
+working on top of, that commit ID is for 3.14rc1, so if he rebases to a newer
+upstream at any point the ID to use will change).
+
+lrg/asoc.git is Liam Girdwood's ASoC dev repo, and intel/haswell-audio-dsp is
+the branch he's using to work on Haswell/Broadwell/Baytrail SoC audio support.
+The patches are gradually being merged upstream and the tree will likely be
+unneeded by 3.14 final or 3.15 final or so. Follow alsa-devel mailing list if
+you want to follow the upstreaming.

@@ -1,0 +1,41 @@
+From f6308b36c411dc5afd6a6f73e6454722bfde57b7 Mon Sep 17 00:00:00 2001
+From: Paul Drews <paul.drews@intel.com>
+Date: Mon, 25 Nov 2013 22:15:55 +0000
+Subject: ACPI: Add BayTrail SoC GPIO and LPSS ACPI IDs
+
+This adds the new ACPI ID (INT33FC) for the BayTrail GPIO
+banks as seen on a BayTrail M System-On-Chip platform.  This
+ACPI ID is used by the BayTrail GPIO (pinctrl) driver to
+manage the Low Power Subsystem (LPSS).
+
+Signed-off-by: Paul Drews <paul.drews@intel.com>
+Acked-by: Linus Walleij <linus.walleij@linaro.org>
+Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+---
+diff --git a/drivers/acpi/acpi_lpss.c b/drivers/acpi/acpi_lpss.c
+index 6745fe1..e603905 100644
+--- a/drivers/acpi/acpi_lpss.c
++++ b/drivers/acpi/acpi_lpss.c
+@@ -162,6 +162,7 @@ static const struct acpi_device_id acpi_lpss_device_ids[] = {
+ 	{ "80860F14", (unsigned long)&byt_sdio_dev_desc },
+ 	{ "80860F41", (unsigned long)&byt_i2c_dev_desc },
+ 	{ "INT33B2", },
++	{ "INT33FC", },
+ 
+ 	{ "INT3430", (unsigned long)&lpt_dev_desc },
+ 	{ "INT3431", (unsigned long)&lpt_dev_desc },
+diff --git a/drivers/pinctrl/pinctrl-baytrail.c b/drivers/pinctrl/pinctrl-baytrail.c
+index 2832576..114f5ef 100644
+--- a/drivers/pinctrl/pinctrl-baytrail.c
++++ b/drivers/pinctrl/pinctrl-baytrail.c
+@@ -512,6 +512,7 @@ static const struct dev_pm_ops byt_gpio_pm_ops = {
+ 
+ static const struct acpi_device_id byt_gpio_acpi_match[] = {
+ 	{ "INT33B2", 0 },
++	{ "INT33FC", 0 },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(acpi, byt_gpio_acpi_match);
+--
+cgit v0.9.2
+
