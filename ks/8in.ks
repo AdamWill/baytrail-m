@@ -26,7 +26,7 @@ bootloader --append="video=VGA-1:800x1280@75e"
 %post
 cat >> /etc/rc.d/init.d/livesys << EOF
 # make the rotater show up
-sed -i -e 's,libreoffice-writer.desktop,v8p-rotate.desktop,g' /usr/share/glib-2.0/schemas/org.gnome.shell.gschema.override
+sed -i -e "s/'libreoffice-writer.desktop'/'v8p-rotate.desktop', 'gnome-terminal.desktop'/g" /usr/share/glib-2.0/schemas/org.gnome.shell.gschema.override
 # rebuild schema cache with any overrides we installed
 glib-compile-schemas /usr/share/glib-2.0/schemas
 
@@ -61,6 +61,9 @@ fedlet-repo
 # i'm building this image and I like these things, damnit
 nano
 htop
+
+# we don't really need this for tablets
+-@libreoffice
 
 # debranding
 generic-release
