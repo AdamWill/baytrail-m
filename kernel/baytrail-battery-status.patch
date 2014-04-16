@@ -1,0 +1,766 @@
+From: "Tianyu, Lan" <tianyu.lan@linux.intel.com>
+To: Adam Williamson <awilliam@redhat.com>
+
+[PATCH] Battery status support for Baytrail
+
+--- a/drivers/acpi/acpica/exfield.c	
++++ a/drivers/acpi/acpica/exfield.c	
+@@ -116,9 +116,12 @@ acpi_ex_read_data_from_field(struct acpi_walk_state *walk_state,
+ 			    ACPI_READ | (obj_desc->field.attribute << 16);
+ 		} else if (obj_desc->field.region_obj->region.space_id ==
+ 			   ACPI_ADR_SPACE_GSBUS) {
+-			length = ACPI_GSBUS_BUFFER_SIZE;
+-			function =
+-			    ACPI_READ | (obj_desc->field.attribute << 16);
++			u16 accessor_type;
++
++			accessor_type = obj_desc->field.attribute;
++			length = acpi_get_serial_access_length(accessor_type,
++					obj_desc->field. access_length) + 2;
++			function = ACPI_READ | (accessor_type << 16);
+ 		} else {	/* IPMI */
+ 
+ 			length = ACPI_IPMI_BUFFER_SIZE;
+@@ -284,9 +287,13 @@ acpi_ex_write_data_to_field(union acpi_operand_object *source_desc,
+ 			    ACPI_WRITE | (obj_desc->field.attribute << 16);
+ 		} else if (obj_desc->field.region_obj->region.space_id ==
+ 			   ACPI_ADR_SPACE_GSBUS) {
+-			length = ACPI_GSBUS_BUFFER_SIZE;
++			u16 accessor_type;
++
++			accessor_type = obj_desc->field.attribute;
++			length = acpi_get_serial_access_length(accessor_type,
++					obj_desc->field. access_length) + 2;
+ 			function =
+-			    ACPI_WRITE | (obj_desc->field.attribute << 16);
++				ACPI_WRITE | (obj_desc->field.attribute << 16);
+ 		} else {	/* IPMI */
+ 
+ 			length = ACPI_IPMI_BUFFER_SIZE;
+--- a/drivers/acpi/acpica/nsxfobj.c	
++++ a/drivers/acpi/acpica/nsxfobj.c	
+@@ -47,12 +47,64 @@ 
+ #include <acpi/acpi.h>
+ #include "accommon.h"
+ #include "acnamesp.h"
++#include "amlcode.h"
+ 
+ #define _COMPONENT          ACPI_NAMESPACE
+ ACPI_MODULE_NAME("nsxfobj")
+ 
+ /*******************************************************************************
+  *
++ * FUNCTION:    acpi_get_serial_access_length
++ *
++ * PARAMETERS:  accessor_type   - The type of the protocol indicated by region
++ *                                field access attributes
++ *              access_length   - The access length of the region field
++ *
++ * RETURN:      Decoded access length
++ *
++ * DESCRIPTION: This routine returns the length of the generic_serial_bus
++ *              protocol bytes
++ *
++ ******************************************************************************/
++u32 acpi_get_serial_access_length(u32 accessor_type, u32 access_length)
++{
++	u32 length;
++
++	switch (accessor_type) {
++	case AML_FIELD_ATTRIB_QUICK:
++	case AML_FIELD_ATTRIB_SEND_RCV:
++	case AML_FIELD_ATTRIB_BYTE:
++
++		length = 1;
++		break;
++
++	case AML_FIELD_ATTRIB_WORD:
++	case AML_FIELD_ATTRIB_WORD_CALL:
++
++		length = 2;
++		break;
++
++	case AML_FIELD_ATTRIB_MULTIBYTE:
++	case AML_FIELD_ATTRIB_RAW_BYTES:
++	case AML_FIELD_ATTRIB_RAW_PROCESS:
++
++		length = access_length;
++		break;
++
++	case AML_FIELD_ATTRIB_BLOCK:
++	case AML_FIELD_ATTRIB_BLOCK_CALL:
++	default:
++
++		length = ACPI_GSBUS_BUFFER_SIZE;
++		break;
++	}
++
++	return length;
++}
++ACPI_EXPORT_SYMBOL(acpi_get_serial_access_length);
++
++/*******************************************************************************
++ *
+  * FUNCTION:    acpi_get_id
+  *
+  * PARAMETERS:  Handle          - Handle of object whose id is desired
+--- a/drivers/acpi/acpica/rscreate.c	
++++ a/drivers/acpi/acpica/rscreate.c	
+@@ -112,6 +112,7 @@ acpi_buffer_to_resource(u8 *aml_buffer,
+ 
+ 	return (status);
+ }
++ACPI_EXPORT_SYMBOL(acpi_buffer_to_resource);
+ 
+ /*******************************************************************************
+  *
+--- a/drivers/acpi/bus.c	
++++ a/drivers/acpi/bus.c	
+@@ -132,6 +132,23 @@ void acpi_bus_private_data_handler(acpi_handle handle,
+ }
+ EXPORT_SYMBOL(acpi_bus_private_data_handler);
+ 
++int acpi_bus_attach_private_data(acpi_handle handle, void *data)
++{
++	acpi_status status;
++
++	status = acpi_attach_data(handle,
++			acpi_bus_private_data_handler, data);
++	if (ACPI_FAILURE(status)) {
++		ACPI_DEBUG_PRINT((ACPI_DB_INFO,
++				"Error attaching device[%p] data\n",
++				handle));
++		return -ENODEV;
++	}
++
++	return 0;
++}
++EXPORT_SYMBOL(acpi_bus_attach_private_data);
++
+ int acpi_bus_get_private_data(acpi_handle handle, void **data)
+ {
+ 	acpi_status status;
+--- a/drivers/acpi/scan.c	
++++ a/drivers/acpi/scan.c	
+@@ -36,6 +36,7 @@ bool acpi_force_hot_remove;
+ 
+ static const char *dummy_hid = "device";
+ 
++static LIST_HEAD(acpi_bus_dep_device_list);
+ static LIST_HEAD(acpi_bus_id_list);
+ static DEFINE_MUTEX(acpi_scan_lock);
+ static LIST_HEAD(acpi_scan_handlers_list);
+@@ -43,6 +44,12 @@ DEFINE_MUTEX(acpi_device_lock);
+ LIST_HEAD(acpi_wakeup_device_list);
+ static DEFINE_MUTEX(acpi_hp_context_lock);
+ 
++
++struct acpi_dep_handle {
++	struct list_head node;
++	acpi_handle handle;
++};
++
+ struct acpi_device_bus_id{
+ 	char bus_id[15];
+ 	unsigned int instance_no;
+@@ -2027,10 +2034,22 @@ static void acpi_scan_init_hotplug(struct acpi_device *adev)
+ 	}
+ }
+ 
++
++static int acpi_dep_device_check(acpi_handle handle)
++{
++	struct acpi_dep_handle *dep;
++
++	list_for_each_entry(dep, &acpi_bus_dep_device_list, node)
++		if (dep->handle == handle)
++			return -EEXIST;
++	return 0;
++}
++
+ static acpi_status acpi_bus_check_add(acpi_handle handle, u32 lvl_not_used,
+ 				      void *not_used, void **return_value)
+ {
+ 	struct acpi_device *device = NULL;
++	struct acpi_dep_handle *dep = NULL;
+ 	int type;
+ 	unsigned long long sta;
+ 	int result;
+@@ -2048,9 +2067,24 @@ static acpi_status acpi_bus_check_add(acpi_handle handle, u32 lvl_not_used,
+ 		return AE_OK;
+ 	}
+ 
+-	acpi_add_single_object(&device, handle, type, sta);
+-	if (!device)
+-		return AE_CTRL_DEPTH;
++	if (!acpi_dep_device_check(handle)
++	   && acpi_has_method(handle, "_BIX")
++	   && acpi_has_method(handle, "_DEP")) {
++		dep = kmalloc(sizeof(struct acpi_dep_handle), GFP_KERNEL);
++		if (!dep)
++			return AE_CTRL_DEPTH;
++		dep->handle = handle;
++		list_add_tail(&dep->node , &acpi_bus_dep_device_list);
++
++		acpi_handle_info(dep->handle,
++				"is added to dep device list.\n");
++
++		return AE_OK;
++	} else {
++		acpi_add_single_object(&device, handle, type, sta);
++		if (!device)
++			return AE_CTRL_DEPTH;
++	}
+ 
+ 	acpi_scan_init_hotplug(device);
+ 
+@@ -2061,6 +2095,30 @@ static acpi_status acpi_bus_check_add(acpi_handle handle, u32 lvl_not_used,
+ 	return AE_OK;
+ }
+ 
++int acpi_walk_dep_device_list(void)
++{
++	struct acpi_dep_handle *dep, *tmp;
++	acpi_status status;
++	unsigned long long sta;
++
++	list_for_each_entry_safe(dep, tmp, &acpi_bus_dep_device_list, node) {
++		status = acpi_evaluate_integer(dep->handle, "_STA", NULL, &sta);
++
++		if (ACPI_FAILURE(status)) {
++			acpi_handle_warn(dep->handle,
++				"Status check failed (0x%x)\n", status);
++		} else if (sta & ACPI_STA_DEVICE_ENABLED) {
++			acpi_bus_scan(dep->handle);
++			acpi_handle_info(dep->handle,
++				"Device is readly\n");
++			list_del(&dep->node);
++			kfree(dep);
++		}
++	}
++	return 0;
++}
++EXPORT_SYMBOL_GPL(acpi_walk_dep_device_list);
++
+ static int acpi_scan_attach_handler(struct acpi_device *device)
+ {
+ 	struct acpi_hardware_id *hwid;
+--- a/drivers/acpi/thermal.c	
++++ a/drivers/acpi/thermal.c	
+@@ -925,9 +925,8 @@ static int acpi_thermal_register_thermal_zone(struct acpi_thermal *tz)
+ 	if (result)
+ 		return result;
+ 
+-	status = acpi_attach_data(tz->device->handle,
+-				  acpi_bus_private_data_handler,
+-				  tz->thermal_zone);
++	status =  acpi_bus_attach_private_data(tz->device->handle,
++					       tz->thermal_zone);
+ 	if (ACPI_FAILURE(status)) {
+ 		pr_err(PREFIX "Error attaching device data\n");
+ 		return -ENODEV;
+--- a/drivers/i2c/Makefile	
++++ a/drivers/i2c/Makefile	
+@@ -2,8 +2,11 @@ 
+ # Makefile for the i2c core.
+ #
+ 
++i2ccore-y := i2c-core.o
++i2ccore-$(CONFIG_ACPI)		+= i2c-acpi.o
++
+ obj-$(CONFIG_I2C_BOARDINFO)	+= i2c-boardinfo.o
+-obj-$(CONFIG_I2C)		+= i2c-core.o
++obj-$(CONFIG_I2C)		+= i2ccore.o
+ obj-$(CONFIG_I2C_SMBUS)		+= i2c-smbus.o
+ obj-$(CONFIG_I2C_CHARDEV)	+= i2c-dev.o
+ obj-$(CONFIG_I2C_MUX)		+= i2c-mux.o
+--- a/drivers/i2c/i2c-acpi.c	
++++ a/drivers/i2c/i2c-acpi.c	
+@@ -0,0 +1,276 @@ 
++/*
++ * i2c ACPI code
++ *
++ * Copyright (C) 2014 Intel Corp
++ *
++ * Author: Lan Tianyu <tianyu.lan@intel.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++ * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * for more details.
++ */
++
++#include <linux/kernel.h>
++#include <linux/errno.h>
++#include <linux/err.h>
++#include <linux/i2c.h>
++#include <linux/acpi.h>
++
++struct i2c_acpi_handler_data {
++	struct acpi_connection_info info;
++	struct i2c_adapter *adapter;
++} __packed;
++
++struct gsb_buffer {
++	u8	status;
++	u8	len;
++	union {
++		u16	wdata;
++		u8	bdata;
++		u8	data[0];
++	};
++} __packed;
++
++static int acpi_gsb_i2c_read_bytes(struct i2c_client *client,
++		u8 cmd, u8 *data, u8 data_len)
++{
++
++	struct i2c_msg msgs[2];
++	int ret;
++	u8  *buffer;
++
++	buffer = kzalloc(data_len, GFP_KERNEL);
++	if (!buffer)
++		return AE_NO_MEMORY;
++
++	msgs[0].addr = client->addr;
++	msgs[0].flags = client->flags;
++	msgs[0].len = 1;
++	msgs[0].buf = &cmd;
++
++	msgs[1].addr = client->addr;
++	msgs[1].flags = client->flags | I2C_M_RD;
++	msgs[1].len = data_len;
++	msgs[1].buf = buffer;
++
++	ret = i2c_transfer(client->adapter, msgs, 2);
++	if (ret < 0)
++		pr_err("i2c read failed\n");
++	else
++		memcpy(data, buffer, data_len);
++
++	kfree(buffer);
++	return ret;
++}
++
++static int acpi_gsb_i2c_write_bytes(struct i2c_client *client,
++		u8 cmd, u8 *data, u8 data_len)
++{
++
++	struct i2c_msg msgs[1];
++	u8  *buffer;
++	int ret = AE_OK;
++
++	buffer = kzalloc(data_len + 1, GFP_KERNEL);
++	if (!buffer)
++		return AE_NO_MEMORY;
++
++	buffer[0] = cmd;
++	memcpy(buffer + 1, data, data_len);
++
++	msgs[0].addr = client->addr;
++	msgs[0].flags = client->flags;
++	msgs[0].len = data_len + 1;
++	msgs[0].buf = buffer;
++
++	ret = i2c_transfer(client->adapter, msgs, 1);
++	if (ret < 0)
++		pr_err("i2c write failed\n");
++
++	kfree(buffer);
++	return ret;
++}
++
++static acpi_status
++i2c_acpi_space_handler(u32 function, acpi_physical_address command,
++			u32 bits, u64 *value64,
++			void *handler_context, void *region_context)
++{
++	struct gsb_buffer *gsb = (struct gsb_buffer *)value64;
++	struct i2c_acpi_handler_data *data = handler_context;
++	struct acpi_connection_info *info = &data->info;
++	struct acpi_resource_i2c_serialbus *sb;
++	struct i2c_adapter *adapter = data->adapter;
++	struct i2c_client client;
++	struct acpi_resource *ares;
++	u32 accessor_type = function >> 16;
++	u8 action = function & ACPI_IO_MASK;
++	int status;
++
++	acpi_buffer_to_resource(info->connection, info->length, &ares);
++	if (!value64 || ares->type != ACPI_RESOURCE_TYPE_SERIAL_BUS)
++		return AE_BAD_PARAMETER;
++
++	sb = &ares->data.i2c_serial_bus;
++	if (sb->type != ACPI_RESOURCE_SERIAL_TYPE_I2C)
++		return AE_BAD_PARAMETER;
++
++	client.adapter = adapter;
++	client.addr = sb->slave_address;
++	client.flags = 0;
++
++	if (sb->access_mode == ACPI_I2C_10BIT_MODE)
++		client.flags |= I2C_CLIENT_TEN;
++
++	switch (accessor_type) {
++	case ACPI_GSB_ACCESS_ATTRIB_QUICK:
++		if (action == ACPI_READ)
++			status = i2c_smbus_quick_read(&client);
++		else
++			status = i2c_smbus_quick_write(&client);
++	break;
++
++	case ACPI_GSB_ACCESS_ATTRIB_SEND_RCV:
++		if (action == ACPI_READ) {
++			status = i2c_smbus_read_byte(&client);
++			if (status >= 0) {
++				gsb->bdata = status;
++				status = 0;
++
++			}
++		} else
++			status = i2c_smbus_write_byte(&client, gsb->bdata);
++	break;
++
++	case ACPI_GSB_ACCESS_ATTRIB_BYTE:
++		if (action == ACPI_READ) {
++			status = i2c_smbus_read_byte_data(&client, command);
++			if (status >= 0) {
++				gsb->bdata = status;
++				status = 0;
++			}
++		} else
++			status = i2c_smbus_write_byte_data(&client, command,
++					gsb->bdata);
++	break;
++
++	case ACPI_GSB_ACCESS_ATTRIB_WORD:
++		if (action == ACPI_READ) {
++			status = i2c_smbus_read_word_data(&client, command);
++			if (status >= 0) {
++				gsb->wdata = status;
++				status = 0;
++			}
++		} else
++			status = i2c_smbus_write_word_data(&client, command,
++					gsb->wdata);
++	break;
++
++	case ACPI_GSB_ACCESS_ATTRIB_BLOCK:
++		if (action == ACPI_READ) {
++			status = i2c_smbus_read_block_data(&client, command,
++					gsb->data);
++			if (status >= 0) {
++				gsb->len = status;
++				status = 0;
++			}
++		} else
++			status = i2c_smbus_write_block_data(&client, command,
++					gsb->len, gsb->data);
++	break;
++
++	case ACPI_GSB_ACCESS_ATTRIB_MULTIBYTE:
++		if (action == ACPI_READ) {
++			status = acpi_gsb_i2c_read_bytes(&client, command,
++					gsb->data, info->access_length);
++			if (status >= 0)
++				status = 0;
++		} else
++			status = acpi_gsb_i2c_write_bytes(&client, command,
++					gsb->data, info->access_length);
++	break;
++
++	case ACPI_GSB_ACCESS_ATTRIB_WORD_CALL:
++		status = i2c_smbus_word_proc_call(&client, command, gsb->wdata);
++		if (status >= 0) {
++			gsb->wdata = status;
++			status = 0;
++		}
++	break;
++
++	case ACPI_GSB_ACCESS_ATTRIB_BLOCK_CALL:
++		status = i2c_smbus_block_proc_call(&client, command, gsb->len,
++				gsb->data);
++		if (status > 0) {
++			gsb->len = status;
++			status = 0;
++		}
++	break;
++
++	default:
++		pr_info("protocl(0x%02x) is not supported.", accessor_type);
++		return AE_BAD_PARAMETER;
++	}
++
++	gsb->status = status;
++	return AE_OK;
++}
++
++
++int i2c_acpi_install_space_handler(struct i2c_adapter *adapter)
++{
++	acpi_handle handle = ACPI_HANDLE(adapter->dev.parent);
++	struct i2c_acpi_handler_data *data;
++	acpi_status status;
++
++	if (!handle)
++		return -EINVAL;
++
++	data = kzalloc(sizeof(struct i2c_acpi_handler_data),
++			    GFP_KERNEL);
++	if (!data)
++		return -ENOMEM;
++
++	data->adapter = adapter;
++	status = acpi_bus_attach_private_data(handle, (void *)data);
++	if (ACPI_FAILURE(status))
++		return -EFAULT;
++
++	status = acpi_install_address_space_handler(handle,
++				ACPI_ADR_SPACE_GSBUS,
++				&i2c_acpi_space_handler,
++				NULL,
++				data);
++	if (ACPI_FAILURE(status)) {
++		pr_err("Error installing i2c space handler\n");
++		acpi_bus_attach_private_data(handle, NULL);
++		kfree(data);
++		return -EFAULT;
++	}
++
++	acpi_walk_dep_device_list();
++	return 0;
++}
++
++void i2c_acpi_remove_space_handler(struct i2c_adapter *adapter)
++{
++	acpi_handle handle = ACPI_HANDLE(adapter->dev.parent);
++	struct i2c_acpi_handler_data *data;
++	acpi_status status;
++
++	if (!handle)
++		return;
++
++	acpi_remove_address_space_handler(handle,
++				ACPI_ADR_SPACE_GSBUS,
++				&i2c_acpi_space_handler);
++
++	status = acpi_bus_get_private_data(handle, (void **)&data);
++	if (ACPI_SUCCESS(status))
++		kfree(data);
++}
+--- a/drivers/i2c/i2c-core.c	
++++ a/drivers/i2c/i2c-core.c	
+@@ -1278,6 +1278,7 @@ exit_recovery:
+ 	/* create pre-declared device nodes */
+ 	of_i2c_register_devices(adap);
+ 	acpi_i2c_register_devices(adap);
++	i2c_acpi_install_space_handler(adap);
+ 
+ 	if (adap->nr < __i2c_first_dynamic_bus_num)
+ 		i2c_scan_static_board_info(adap);
+@@ -1451,6 +1452,8 @@ void i2c_del_adapter(struct i2c_adapter *adap)
+ 		return;
+ 	}
+ 
++	i2c_acpi_remove_space_handler(adap);
++
+ 	/* Tell drivers about this removal */
+ 	mutex_lock(&core_lock);
+ 	bus_for_each_drv(&i2c_bus_type, NULL, adap,
+@@ -2118,6 +2121,36 @@ static int i2c_smbus_check_pec(u8 cpec, struct i2c_msg *msg)
+ }
+ 
+ /**
++ * i2c_smbus_quick_write - SMBus "quick write" protocol
++ * @client: Handle to slave device
++ *
++ * This executes the SMBus "quick write" protocol, returning negative errno
++ * else zero on success.
++ */
++s32 i2c_smbus_quick_write(const struct i2c_client *client)
++{
++	return i2c_smbus_xfer(client->adapter, client->addr, client->flags,
++				I2C_SMBUS_WRITE, 0,
++				I2C_SMBUS_QUICK, NULL);
++}
++EXPORT_SYMBOL_GPL(i2c_smbus_quick_write);
++
++/**
++ * i2c_smbus_read_byte - SMBus "quick read" protocol
++ * @client: Handle to slave device
++ *
++ * This executes the SMBus "quick read" protocol, returning negative errno
++ * else zero on success.
++ */
++s32 i2c_smbus_quick_read(const struct i2c_client *client)
++{
++	return i2c_smbus_xfer(client->adapter, client->addr, client->flags,
++				I2C_SMBUS_READ, 0,
++				I2C_SMBUS_QUICK, NULL);
++}
++EXPORT_SYMBOL_GPL(i2c_smbus_quick_read);
++
++/**
+  * i2c_smbus_read_byte - SMBus "receive byte" protocol
+  * @client: Handle to slave device
+  *
+@@ -2232,6 +2265,30 @@ s32 i2c_smbus_write_word_data(const struct i2c_client *client, u8 command,
+ EXPORT_SYMBOL(i2c_smbus_write_word_data);
+ 
+ /**
++ * i2c_smbus_word_proc_call - SMBus "word proc call" protocol
++ * @client: Handle to slave device
++ * @command: Byte interpreted by slave
++ * @value: 16-bit "word" being written
++ *
++ * This executes the SMBus "word proc all" protocol, returning negative errno
++ * else a 16-bit unsigned "word" received from the device.
++ */
++s32 i2c_smbus_word_proc_call(const struct i2c_client *client, u8 command,
++			      u16 value)
++{
++	union i2c_smbus_data data;
++	int status;
++
++	data.word = value;
++	status = i2c_smbus_xfer(client->adapter, client->addr, client->flags,
++			      I2C_SMBUS_READ, command,
++			      I2C_SMBUS_PROC_CALL, &data);
++
++	return (status < 0) ? status : data.word;
++}
++EXPORT_SYMBOL(i2c_smbus_word_proc_call);
++
++/**
+  * i2c_smbus_read_block_data - SMBus "block read" protocol
+  * @client: Handle to slave device
+  * @command: Byte interpreted by slave
+@@ -2288,6 +2345,38 @@ s32 i2c_smbus_write_block_data(const struct i2c_client *client, u8 command,
+ }
+ EXPORT_SYMBOL(i2c_smbus_write_block_data);
+ 
++/**
++ * i2c_smbus_block_proc_call - SMBus "block write" protocol
++ * @client: Handle to slave device
++ * @command: Byte interpreted by slave
++ * @length: Size of data block; SMBus allows at most 32 bytes
++ * @values: Byte array which will be written.
++ *
++ * This executes the SMBus "block proc call" protocol, returning negative errno
++ * else zero on success.
++ */
++s32 i2c_smbus_block_proc_call(const struct i2c_client *client, u8 command,
++			       u8 length, u8 *values)
++{
++	union i2c_smbus_data data;
++	int status;
++
++	if (length > I2C_SMBUS_BLOCK_MAX)
++		length = I2C_SMBUS_BLOCK_MAX;
++	data.block[0] = length;
++	memcpy(&data.block[1], values, length);
++	status = i2c_smbus_xfer(client->adapter, client->addr, client->flags,
++			      I2C_SMBUS_READ, command,
++			      I2C_SMBUS_BLOCK_PROC_CALL, &data);
++
++	if (status < 0)
++		return status;
++
++	memcpy(values, &data.block[1], data.block[0]);
++	return data.block[0];
++}
++EXPORT_SYMBOL(i2c_smbus_block_proc_call);
++
+ /* Returns the number of read bytes */
+ s32 i2c_smbus_read_i2c_block_data(const struct i2c_client *client, u8 command,
+ 				  u8 length, u8 *values)
+--- a/include/acpi/acpi_bus.h	
++++ a/include/acpi/acpi_bus.h	
+@@ -406,6 +406,7 @@ extern struct kobject *acpi_kobj;
+ extern int acpi_bus_generate_netlink_event(const char*, const char*, u8, int);
+ void acpi_bus_private_data_handler(acpi_handle, void *);
+ int acpi_bus_get_private_data(acpi_handle, void **);
++int acpi_bus_attach_private_data(acpi_handle, void *);
+ void acpi_bus_no_hotplug(acpi_handle handle);
+ extern int acpi_notifier_call_chain(struct acpi_device *, u32, u32);
+ extern int register_acpi_notifier(struct notifier_block *);
+--- a/include/acpi/acpixf.h	
++++ a/include/acpi/acpixf.h	
+@@ -275,6 +275,7 @@ acpi_status acpi_get_parent(acpi_handle object, acpi_handle * out_handle);
+ /*
+  * Handler interfaces
+  */
++u32 acpi_get_serial_access_length(u32 accessor_type, u32 access_length);
+ acpi_status
+ acpi_install_initialization_handler(acpi_init_handler handler, u32 function);
+ 
+--- a/include/linux/acpi.h	
++++ a/include/linux/acpi.h	
+@@ -119,6 +119,7 @@ int acpi_boot_init (void);
+ void acpi_boot_table_init (void);
+ int acpi_mps_check (void);
+ int acpi_numa_init (void);
++int acpi_walk_dep_device_list(void);
+ 
+ int acpi_table_init (void);
+ int acpi_table_parse(char *id, acpi_tbl_table_handler handler);
+@@ -366,6 +367,17 @@ extern bool osc_sb_apei_support_acked;
+ #define OSC_PCI_EXPRESS_CAPABILITY_CONTROL	0x00000010
+ #define OSC_PCI_CONTROL_MASKS			0x0000001f
+ 
++#define ACPI_GSB_ACCESS_ATTRIB_QUICK		0x00000002
++#define ACPI_GSB_ACCESS_ATTRIB_SEND_RCV         0x00000004
++#define ACPI_GSB_ACCESS_ATTRIB_BYTE		0x00000006
++#define ACPI_GSB_ACCESS_ATTRIB_WORD		0x00000008
++#define ACPI_GSB_ACCESS_ATTRIB_BLOCK		0x0000000A
++#define ACPI_GSB_ACCESS_ATTRIB_MULTIBYTE	0x0000000B
++#define ACPI_GSB_ACCESS_ATTRIB_WORD_CALL	0x0000000C
++#define ACPI_GSB_ACCESS_ATTRIB_BLOCK_CALL	0x0000000D
++#define ACPI_GSB_ACCESS_ATTRIB_RAW_BYTES	0x0000000E
++#define ACPI_GSB_ACCESS_ATTRIB_RAW_PROCESS	0x0000000F
++
+ extern acpi_status acpi_pci_osc_control_set(acpi_handle handle,
+ 					     u32 *mask, u32 req);
+ 
+--- a/include/linux/i2c.h	
++++ a/include/linux/i2c.h	
+@@ -82,6 +82,8 @@ extern s32 i2c_smbus_xfer(struct i2c_adapter *adapter, u16 addr,
+ /* Now follow the 'nice' access routines. These also document the calling
+    conventions of i2c_smbus_xfer. */
+ 
++extern s32 i2c_smbus_quick_write(const struct i2c_client *client);
++extern s32 i2c_smbus_quick_read(const struct i2c_client *client);
+ extern s32 i2c_smbus_read_byte(const struct i2c_client *client);
+ extern s32 i2c_smbus_write_byte(const struct i2c_client *client, u8 value);
+ extern s32 i2c_smbus_read_byte_data(const struct i2c_client *client,
+@@ -92,6 +94,10 @@ extern s32 i2c_smbus_read_word_data(const struct i2c_client *client,
+ 				    u8 command);
+ extern s32 i2c_smbus_write_word_data(const struct i2c_client *client,
+ 				     u8 command, u16 value);
++extern s32 i2c_smbus_word_proc_call(const struct i2c_client *client,
++				    u8 command, u16 value);
++extern s32 i2c_smbus_block_proc_call(const struct i2c_client *client,
++				u8 command, u8 length, u8 *values);
+ 
+ static inline s32
+ i2c_smbus_read_word_swapped(const struct i2c_client *client, u8 command)
+@@ -576,4 +582,14 @@ static inline struct i2c_adapter *of_find_i2c_adapter_by_node(struct device_node
+ }
+ #endif /* CONFIG_OF */
+ 
++#ifdef CONFIG_ACPI
++int i2c_acpi_install_space_handler(struct i2c_adapter *adapter);
++void i2c_acpi_remove_space_handler(struct i2c_adapter *adapter);
++#else
++static inline void i2c_acpi_remove_space_handler(struct i2c_adapter *adapter)
++{ }
++static inline int i2c_acpi_install_space_handler(struct i2c_adapter *adapter)
++{ return 0; }
++#endif
++
+ #endif /* _LINUX_I2C_H */
