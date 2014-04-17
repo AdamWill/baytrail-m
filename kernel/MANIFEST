@@ -12,8 +12,24 @@ x86-new-Intel-Atom-SoC-power-management-controller-driver.patch
 
 * Battery status support from Lan Tianyu
 * https://bugzilla.kernel.org/show_bug.cgi?id=69011
-baytrail-battery-status.patch
+* https://lkml.org/lkml/2014/4/16/322
+1-9-ACPICA-Executer-Fix-buffer-allocation-issue-for-generic_serial_bus-region-field-accesses..patch
+2-9-ACPICA-Export-acpi_buffer_to_resource-symbol.patch
+3-9-ACPI-Add-acpi_bus_attach_private_data-to-facilitate-to-attach-data-to-ACPI-handle.patch
+4-9-ACPI-Thermal-Use-acpi_bus_attach_private_data-to-attach-private-data.patch
+5-9-I2C-Add-smbus-quick-read-write-helper-function.patch
+6-9-I2C-Add-smbus-word-block-process-call-helper-function.patch
+7-9-I2C-ACPI-Add-i2c-ACPI-operation-region-support.patch
+8-9-I2C-ACPI-Move-ACPI-related-code-to-i2c-acpi.c.patch
+# 9-9-I2C-ACPI-Add-CONFIG_I2C_ACPI-config.patch (currently not applied)
+0-9-I2C-ACPI-operation-region-handler-support.patch
 
 * Test fix for SDIO device enumeration from Doug Johnson
 * https://bugzilla.kernel.org/show_bug.cgi?id=67921
 baytrail_gpio_quirk.patch
+
+* Test fix for IRQ conflicts in GPIO IRQ allocations
+* https://bugzilla.kernel.org/show_bug.cgi?id=68291
+* rediffed version of https://lkml.org/lkml/2014/4/13/190
+* "pinctrl-baytrail: workaround for irq descriptor conflict on ASUS T100TA"
+pinctrl-baytrail-workaround-for-irq-descriptor-conflict-on-ASUS-T100TA.patch
