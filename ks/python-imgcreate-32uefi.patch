@@ -1,0 +1,29 @@
+--- /usr/lib/python2.7/site-packages/imgcreate/live.py	2013-11-18 14:55:01.000000000 -0800
++++ /usr/lib/python2.7/site-packages/imgcreate/live.py.32bituefi	2013-12-02 20:50:33.718881467 -0800
+@@ -235,9 +235,6 @@
+ 
+     def _generate_efiboot(self, isodir):
+         """Generate EFI boot images."""
+-        if not glob.glob(self._instroot+"/boot/efi/EFI/*/shim.efi"):
+-            logging.error("Missing shim.efi, skipping efiboot.img creation.")
+-            return
+ 
+         # XXX-BCL: does this need --label?
+         subprocess.call(["mkefiboot", isodir + "/EFI/BOOT",
+@@ -711,14 +708,12 @@
+         """ Copy the efi files into /EFI/BOOT/
+             If any of them are missing, return False.
+             requires:
+-              shim.efi
+-              gcdx64.efi
++              gcdia32.efi
+               fonts/unicode.pf2
+         """
+         fail = False
+         missing = []
+-        files = [("/boot/efi/EFI/*/shim.efi", "/EFI/BOOT/BOOT%s.efi" % (self.efiarch,)),
+-                 ("/boot/efi/EFI/*/gcdx64.efi", "/EFI/BOOT/grubx64.efi"),
++        files = [("/boot/efi/EFI/*/gcdia32.efi", "/EFI/BOOT/BOOTIA32.efi"),
+                  ("/boot/efi/EFI/*/fonts/unicode.pf2", "/EFI/BOOT/fonts/"),
+                 ]
+         makedirs(isodir+"/EFI/BOOT/fonts/")
