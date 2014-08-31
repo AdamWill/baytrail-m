@@ -59,17 +59,17 @@ diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
 index 0af5250..18f7d38 100644
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
-@@ -2420,6 +2420,10 @@ config IOSF_MBI
- 	  Fabric (IOSF) Sideband MailBox Interface (MBI). For MBI platforms
- 	  enumerable by PCI.
- 
+@@ -2413,6 +2413,10 @@
+ 	tristate
+ 	default m
+ 	depends on PCI
++	
 +config PMC_ATOM
 +	def_bool y
 +        depends on PCI
-+
+ 
  source "net/Kconfig"
  
- source "drivers/Kconfig"
 diff --git a/arch/x86/include/asm/pmc_atom.h b/arch/x86/include/asm/pmc_atom.h
 new file mode 100644
 index 0000000..43b68fc
