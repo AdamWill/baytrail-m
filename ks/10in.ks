@@ -43,6 +43,8 @@ EOF
 monitor-edid
 acpica-tools
 intel-gpu-tools
+evtest
+rfkill
 dconf-editor
 gnome-tweak-tool
 
