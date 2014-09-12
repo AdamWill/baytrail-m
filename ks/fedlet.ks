@@ -1,5 +1,5 @@
 # the 'base' image we're modifying - your copy may be elsewhere, of course
-%include spin-kickstarts/fedora-livecd-desktop.ks
+%include spin-kickstarts/fedora-live-workstation.ks
 
 # if you particularly need your rawhide repo to be bang up-to-date you may
 # want to uncomment this, it forces use of the primary mirror; but that's
@@ -17,11 +17,7 @@ repo --name=fedlet --baseurl=http://www.happyassassin.net/fedlet/repo/$basearch
 # when we're in freezes, this is the side repo where releng puts blocker /
 # freeze exception fixes so they can be pulled 'through the freeze' into the
 # composes
-#repo --name=bleed --baseurl=http://kojipkgs.fedoraproject.org/mash/bleed/$basearch
-
-# forces the video mode for 8" fedlets, the 'e' forces it not to be overridden
-# by hotplug detection
-bootloader --append="video=VGA-1:800x1280@75e"
+repo --name=bleed --baseurl=http://kojipkgs.fedoraproject.org/mash/bleed/$basearch
 
 %post
 cat >> /etc/rc.d/init.d/livesys << EOF
@@ -40,21 +36,23 @@ EOF
 %packages
 
 # handy debugging / configuration tools
-monitor-edid
 acpica-tools
-intel-gpu-tools
-evtest
-rfkill
 dconf-editor
+evtest
 gnome-tweak-tool
+intel-gpu-tools
+monitor-edid
+rfkill
 
 # video playback acceleration (needs libva-driver-intel from Some Other Place to actually work)
 libva
 gstreamer1-vaapi
 libva-utils
 
+# firmwares for fedlet-y hardware
+baytrail-firmware
+
 # fedlet-specific config-y things and tools
-xorg-config-baytrail-800x1280
 v8p-rotate
 
 # fedlet repo stuff
@@ -68,13 +66,13 @@ htop
 -@libreoffice
 
 # debranding
-generic-release
-generic-release-rawhide
+firewalld-config-standard
 generic-logos
+generic-release
 generic-release-notes
--fedora-release
--fedora-release-rawhide
 -fedora-logos
--fedora-release-notes
+-fedora-release*
+-fedora-repos*
+-firewalld-config-workstation
 
 %end
