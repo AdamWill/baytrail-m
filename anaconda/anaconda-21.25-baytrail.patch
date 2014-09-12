@@ -1,0 +1,17 @@
+--- anaconda-21.25/pyanaconda/bootloader.py	2014-02-28 17:18:44.000000000 -0800
++++ anaconda-21.25/pyanaconda/bootloader.py.new	2014-03-06 18:34:41.379745603 -0800
+@@ -1640,12 +1640,12 @@
+         return ret
+ 
+ class EFIGRUB(GRUB2):
+-    packages = ["grub2-efi", "efibootmgr", "shim"]
++    packages = ["grub2-efi", "efibootmgr"]
+     can_dual_boot = False
+     stage2_is_valid_stage1 = False
+     stage2_bootable = False
+ 
+-    _efi_binary = "\\shim.efi"
++    _efi_binary = "\\grubia32.efi"
+ 
+     @property
+     def _config_dir(self):
