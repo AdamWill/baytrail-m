@@ -1,28 +1,91 @@
-From patchwork Wed Apr 16 13:24:41 2014
+From patchwork Tue May 20 12:59:24 2014
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
-Subject: [8/9] I2C/ACPI: Move ACPI related code to i2c-acpi.c
+Subject: [V3,
+	5/5] I2C/ACPI: Clean up I2C ACPI code and Add CONFIG_I2C_ACPI config
 From: "lan,Tianyu" <tianyu.lan@intel.com>
-X-Patchwork-Id: 4001341
-Message-Id: <1397654682-7094-9-git-send-email-tianyu.lan@intel.com>
-To: wsa@the-dreams.de, rjw@rjwysocki.net, lenb@kernel.org,
-	mika.westerberg@linux.intel.com, awilliam@redhat.com, tianyu.lan@intel.com
-Cc: linux-i2c@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Wed, 16 Apr 2014 21:24:41 +0800
+X-Patchwork-Id: 4209461
+Message-Id: <1400590764-11108-6-git-send-email-tianyu.lan@intel.com>
+To: wsa@the-dreams.de, rjw@rjwysocki.net,
+	mika.westerberg@linux.intel.com, awilliam@redhat.com, lenb@kernel.org
+Cc: Lan Tianyu <tianyu.lan@intel.com>, linux-i2c@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-acpi@vger.kernel.org
+Date: Tue, 20 May 2014 20:59:24 +0800
 
-Clean up ACPI related code in the i2c core.
+Clean up ACPI related code in the i2c core and add CONFIG_I2C_ACPI
+to enable I2C ACPI code.
 
+Current there is a race between removing I2C ACPI operation region
+and ACPI AML code accessing. So make i2c core built-in if CONFIG_I2C_ACPI
+is set.
+
+Reviewed-by: Mika Westerberg <mika.westerberg@linux.intel.com>
 Signed-off-by: Lan Tianyu <tianyu.lan@intel.com>
 
 ---
-drivers/i2c/i2c-acpi.c | 89 ++++++++++++++++++++++++++++++++++++++++++++++
+drivers/i2c/Kconfig    | 18 +++++++++-
+ drivers/i2c/Makefile   |  2 +-
+ drivers/i2c/i2c-acpi.c | 89 ++++++++++++++++++++++++++++++++++++++++++++++
  drivers/i2c/i2c-core.c | 95 --------------------------------------------------
- include/linux/i2c.h    |  3 ++
- 3 files changed, 92 insertions(+), 95 deletions(-)
+ include/linux/i2c.h    |  4 ++-
+ 5 files changed, 110 insertions(+), 98 deletions(-)
 
+diff --git a/drivers/i2c/Kconfig b/drivers/i2c/Kconfig
+index 7b7ea32..3e3b680 100644
+--- a/drivers/i2c/Kconfig
++++ b/drivers/i2c/Kconfig
+@@ -2,7 +2,9 @@
+ # I2C subsystem configuration
+ #
+ 
+-menuconfig I2C
++menu "I2C support"
++
++config I2C
+ 	tristate "I2C support"
+ 	select RT_MUTEXES
+ 	---help---
+@@ -21,6 +23,18 @@ menuconfig I2C
+ 	  This I2C support can also be built as a module.  If so, the module
+ 	  will be called i2c-core.
+ 
++config I2C_ACPI
++	bool "I2C ACPI support"
++	select I2C
++	depends on ACPI
++	default y
++	help
++	  Say Y here if you want to enable ACPI I2C support. This includes support
++	  for automatic enumeration of I2C slave devices and support for ACPI I2C
++	  Operation Regions. Operation Regions allow firmware (BIOS) code to
++	  access I2C slave devices, such as smart batteries through an I2C host
++	  controller driver.
++
+ if I2C
+ 
+ config I2C_BOARDINFO
+@@ -124,3 +138,5 @@ config I2C_DEBUG_BUS
+ 	  on.
+ 
+ endif # I2C
++
++endmenu
+diff --git a/drivers/i2c/Makefile b/drivers/i2c/Makefile
+index 80db307..a1f590c 100644
+--- a/drivers/i2c/Makefile
++++ b/drivers/i2c/Makefile
+@@ -3,7 +3,7 @@
+ #
+ 
+ i2ccore-y := i2c-core.o
+-i2ccore-$(CONFIG_ACPI)		+= i2c-acpi.o
++i2ccore-$(CONFIG_I2C_ACPI)	+= i2c-acpi.o
+ 
+ obj-$(CONFIG_I2C_BOARDINFO)	+= i2c-boardinfo.o
+ obj-$(CONFIG_I2C)		+= i2ccore.o
 diff --git a/drivers/i2c/i2c-acpi.c b/drivers/i2c/i2c-acpi.c
-index 942abdf..a0ae867 100644
+index f7f4c89..e8b6196 100644
 --- a/drivers/i2c/i2c-acpi.c
 +++ b/drivers/i2c/i2c-acpi.c
 @@ -37,6 +37,95 @@ struct gsb_buffer {
@@ -122,7 +185,7 @@ index 942abdf..a0ae867 100644
  		u8 cmd, u8 *data, u8 data_len)
  {
 diff --git a/drivers/i2c/i2c-core.c b/drivers/i2c/i2c-core.c
-index bb9dc56..9ca50c8 100644
+index e25cb84..4ccff11 100644
 --- a/drivers/i2c/i2c-core.c
 +++ b/drivers/i2c/i2c-core.c
 @@ -1092,101 +1092,6 @@ EXPORT_SYMBOL(of_find_i2c_adapter_by_node);
@@ -228,17 +291,20 @@ index bb9dc56..9ca50c8 100644
  			      struct i2c_adapter *adap)
  {
 diff --git a/include/linux/i2c.h b/include/linux/i2c.h
-index 681e689..fc1ef42 100644
+index f7a939a..ea50766 100644
 --- a/include/linux/i2c.h
 +++ b/include/linux/i2c.h
-@@ -586,7 +586,10 @@ static inline struct i2c_adapter *of_find_i2c_adapter_by_node(struct device_node
- #ifdef CONFIG_ACPI
+@@ -577,10 +577,12 @@ static inline struct i2c_adapter *of_find_i2c_adapter_by_node(struct device_node
+ }
+ #endif /* CONFIG_OF */
+ 
+-#ifdef CONFIG_ACPI
++#ifdef CONFIG_I2C_ACPI
  int acpi_i2c_install_space_handler(struct i2c_adapter *adapter);
  void acpi_i2c_remove_space_handler(struct i2c_adapter *adapter);
 +void acpi_i2c_register_devices(struct i2c_adapter *adap);
  #else
-+static inline void acpi_i2c_register_devices(struct i2c_adapter *adap) {};
-+
++static inline void acpi_i2c_register_devices(struct i2c_adapter *adap) { }
  static inline void acpi_i2c_remove_space_handler(struct i2c_adapter *adapter)
  { }
  static inline int acpi_i2c_install_space_handler(struct i2c_adapter *adapter)

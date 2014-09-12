@@ -1,0 +1,30 @@
+From 9b11eb44eff7ede6bc3a94511cf9dfda75af9c9f Mon Sep 17 00:00:00 2001
+From: Jarkko Nikula <jarkko.nikula@linux.intel.com>
+Date: Wed, 6 Aug 2014 09:48:14 +0300
+Subject: [PATCH] ASoC: Intel: Update Baytrail ADSP firmware name
+
+Update the initial Baytrail ADSP firmware file name with the one that is now
+in linux-firmware.git. Please see linux-firmware.git commit 7551a3a78453
+("fw_sst_0f28: Add firmware for Intel Baytrail SST DSP").
+
+Signed-off-by: Jarkko Nikula <jarkko.nikula@linux.intel.com>
+Signed-off-by: Mark Brown <broonie@linaro.org>
+---
+ sound/soc/intel/sst-acpi.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/sound/soc/intel/sst-acpi.c b/sound/soc/intel/sst-acpi.c
+index 42edc6f..03d0a16 100644
+--- a/sound/soc/intel/sst-acpi.c
++++ b/sound/soc/intel/sst-acpi.c
+@@ -246,8 +246,8 @@ static struct sst_acpi_desc sst_acpi_broadwell_desc = {
+ };
+ 
+ static struct sst_acpi_mach baytrail_machines[] = {
+-	{ "10EC5640", "byt-rt5640", "intel/fw_sst_0f28.bin-i2s_master" },
+-	{ "193C9890", "byt-max98090", "intel/fw_sst_0f28.bin-i2s_master" },
++	{ "10EC5640", "byt-rt5640", "intel/fw_sst_0f28.bin-48kHz_i2s_master" },
++	{ "193C9890", "byt-max98090", "intel/fw_sst_0f28.bin-48kHz_i2s_master" },
+ 	{}
+ };
+ 
