@@ -34,6 +34,8 @@ EOF
 %end
 
 %packages
+# needed for successful install
+efibootmgr
 
 # handy debugging / configuration tools
 acpica-tools
