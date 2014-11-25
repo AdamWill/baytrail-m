@@ -1,0 +1,35 @@
+From ca93a3607ea032903035d2a50c5dedeba19eab97 Mon Sep 17 00:00:00 2001
+From: Jan-Michael Brummer <jan.brummer@tabos.org>
+Date: Mon, 24 Nov 2014 19:10:51 +0100
+Subject: [PATCH] main: Fix compiling issues in buffered accelerometer
+
+---
+ src/drv-iio-buffer-accel.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/drv-iio-buffer-accel.c b/src/drv-iio-buffer-accel.c
+index 9a3fdef..e94c1e6 100644
+--- a/src/drv-iio-buffer-accel.c
++++ b/src/drv-iio-buffer-accel.c
+@@ -767,7 +767,7 @@ iio_buffer_accel_open (GUdevDevice        *device,
+ 	drv_data = g_new0 (DrvData, 1);
+ 	drv_data->dev = g_object_ref (device);
+ 	drv_data->trigger_name = get_trigger_name (device);
+-	data->dev_dir_name = g_strdup (g_udev_device_get_sysfs_path (dev));
++	drv_data->dev_dir_name = g_strdup (g_udev_device_get_sysfs_path (device));
+ 	if (!drv_data->trigger_name) {
+ 		g_clear_pointer (&drv_data, g_free);
+ 		return FALSE;
+@@ -780,7 +780,7 @@ iio_buffer_accel_open (GUdevDevice        *device,
+ 		goto out;
+ 	}
+ 
+-	data->dev_path = g_strdup (g_udev_device_get_device_file (device));
++	drv_data->dev_path = g_strdup (g_udev_device_get_device_file (device));
+ 	drv_data->callback_func = callback_func;
+ 	drv_data->user_data = user_data;
+ 
+-- 
+2.1.0
+
+
