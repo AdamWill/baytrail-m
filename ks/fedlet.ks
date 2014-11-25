@@ -56,6 +56,7 @@ baytrail-firmware
 
 # fedlet-specific config-y things and tools
 v8p-rotate
+iio-sensor-proxy
 
 # fedlet repo stuff
 fedlet-repo
