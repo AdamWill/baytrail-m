@@ -1,40 +1,25 @@
-This directory contains kernel patches currently necessary/useful for
-Bay Trail-m devices which have not landed in linus' current tree (or
-in Fedora's Rawhide kernel).
-
-These, of course, should be considered to be licensed under the GPLv2, not
-MIT.
-
-# Fixes shutdown and reboot, without quirks
-# https://bugzilla.kernel.org/show_bug.cgi?id=70931
-# https://patchwork.kernel.org/patch/3787341/
-* x86-new-Intel-Atom-SoC-power-management-controller-driver.patch
-
-# Battery status support patch series from Lan Tianyu
+# https://patchwork.kernel.org/patch/5161621/(minor rediff required)
 # https://bugzilla.kernel.org/show_bug.cgi?id=69011
-# https://lkml.org/lkml/2014/5/20/284
-# patches 1-3 already merged upstream
-* V3-4-5-I2C-ACPI-Add-i2c-ACPI-operation-region-support.patch
-* V3-5-5-I2C-ACPI-Clean-up-I2C-ACPI-code-and-Add-CONFIG_I2C_ACPI-config.patch
-# http://www.spinics.net/lists/linux-i2c/msg15201.html
-* 0001-ACPI-temporary-dep-solution-for-battery-support.patch
-
-# Test fix for SDIO device enumeration from Doug Johnson
-# https://bugzilla.kernel.org/show_bug.cgi?id=67921
-* baytrail_gpio_quirk_v3.patch
-
-# Update name of audio firmware file
-# http://comments.gmane.org/gmane.linux.alsa.devel/126117
-# Upstream 3.17
-* ASoC-Intel-update-baytrail-adsp-firmware-name.patch
-
-# ath6kl series backported from 3.17, should make wireless work
-* 0001-ath6kl-Fix-ath6kl_bmi_read_hi32-macro.patch
-* 0002-ath6kl-convert-ar6004-hardware-flags-to-firmware-fea.patch
-* 0003-ath6kl-implement-rx-flush-for-htc-pipe.patch
-* 0004-ath6kl-don-t-set-hi_refclk_hz-if-hardware-version-do.patch
-* 0005-ath6kl-add-support-wmi-rate-tables-with-mcs15.patch
-* 0006-ath6kl-add-support-for-ar6004-hw3.0.patch
+# Fixes battery status
+* V2-ACPI-Add-_DEP-Operation-Region-Dependencies-support-to-fix-battery-issue-on-the-Asus-T100TA.patch
 
 # Add SDIO ID for the V8P wireless adapter to ath6kl driver
 * support-Dell-OEM-chipset-found-in-Venue-8-Pro-SDIO-I.patch
+
+# Map 'Home' button on Venue 8 Pro to left meta key (i.e. "Start")
+# from Jan-Michael Brummer
+* soc_button_use_leftmeta.patch
+
+# Enable mic on RT5640 (i.e. lots of Baytrail hardware, we hope)
+# from Jan-Michael Brummer
+* rt5640_enable_mic.patch
+
+# Fix wifi on V8P(?) from Jan-Michael Brummer
+* sdhci-pm.patch
+
+# https://bugs.freedesktop.org/show_bug.cgi?id=85977
+# Hacky implementation of backlight support for (at least) Dell Venue 8 Pro
+# This is the patch attached to the bug plus a further change sent by email
+# by J-M which makes the hack optional, enabled only if
+# i915.force_backlight_pmic=1 is passed on the cmdline
+* baytrail-backlight.patch
