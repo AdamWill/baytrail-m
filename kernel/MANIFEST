@@ -10,10 +10,6 @@
 # from Jan-Michael Brummer
 * soc_button_use_leftmeta.patch
 
-# Enable mic on RT5640 (i.e. lots of Baytrail hardware, we hope)
-# from Jan-Michael Brummer
-* rt5640_enable_mic.patch
-
 # Fix wifi on V8P(?) from Jan-Michael Brummer
 * sdhci-pm.patch
 
