@@ -21,7 +21,7 @@
          """
          fail = False
          missing = []
--        files = [("/boot/efi/EFI/*/shim.efi", "/EFI/BOOT/BOOT%s.efi" % (self.efiarch,)),
+-        files = [("/boot/efi/EFI/*/shim.efi", "/EFI/BOOT/BOOT%s.EFI" % (self.efiarch,)),
 -                 ("/boot/efi/EFI/*/gcdx64.efi", "/EFI/BOOT/grubx64.efi"),
 +        files = [("/boot/efi/EFI/*/gcdia32.efi", "/EFI/BOOT/BOOTIA32.efi"),
                   ("/boot/efi/EFI/*/fonts/unicode.pf2", "/EFI/BOOT/fonts/"),
