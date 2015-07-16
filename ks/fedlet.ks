@@ -21,8 +21,6 @@ repo --name=bleed --baseurl=http://kojipkgs.fedoraproject.org/mash/bleed/$basear
 
 %post
 cat >> /etc/rc.d/init.d/livesys << EOF
-# make the rotater show up
-sed -i -e "s/'libreoffice-writer.desktop'/'v8p-rotate.desktop', 'gnome-terminal.desktop'/g" /usr/share/glib-2.0/schemas/org.gnome.shell.gschema.override
 # rebuild schema cache with any overrides we installed
 glib-compile-schemas /usr/share/glib-2.0/schemas
 
@@ -53,10 +51,6 @@ libva-utils
 
 # firmwares for fedlet-y hardware
 baytrail-firmware
-
-# fedlet-specific config-y things and tools
-v8p-rotate
-iio-sensor-proxy
 
 # fedlet repo stuff
 fedlet-repo
