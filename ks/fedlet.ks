@@ -61,6 +61,9 @@ htop
 
 # we don't really need this for tablets
 -@libreoffice
+# And we shouldn't install unoconv (used by gnome-documents) either
+# or the above will be for nothing
+-unoconv
 
 # debranding
 firewalld-config-standard
