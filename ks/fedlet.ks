@@ -17,10 +17,12 @@ repo --name=fedlet --baseurl=http://www.happyassassin.net/fedlet/repo/$basearch
 # when we're in freezes, this is the side repo where releng puts blocker /
 # freeze exception fixes so they can be pulled 'through the freeze' into the
 # composes
-repo --name=bleed --baseurl=http://kojipkgs.fedoraproject.org/mash/bleed/$basearch
+# repo --name=bleed --baseurl=http://kojipkgs.fedoraproject.org/mash/bleed/$basearch
 
 %post
 cat >> /etc/rc.d/init.d/livesys << EOF
+# terminal instead of LO
+sed -i -e "s/'libreoffice-writer.desktop'/'gnome-terminal.desktop'/g" /usr/share/glib-2.0/schemas/org.gnome.shell.gschema.override
 # rebuild schema cache with any overrides we installed
 glib-compile-schemas /usr/share/glib-2.0/schemas
 
@@ -52,6 +54,9 @@ libva-utils
 # firmwares for fedlet-y hardware
 baytrail-firmware
 
+# fedlet-specific config-y things and tools
+iio-sensor-proxy
+
 # fedlet repo stuff
 fedlet-repo
 
@@ -66,13 +71,11 @@ htop
 -unoconv
 
 # debranding
-firewalld-config-standard
 generic-logos
 generic-release
 generic-release-notes
 -fedora-logos
 -fedora-release*
 -fedora-repos*
--firewalld-config-workstation
 
 %end
